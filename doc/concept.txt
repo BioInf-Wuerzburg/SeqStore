@@ -1,0 +1,42 @@
+scripts are oo style modulinos
+
+	bin/SeqFilter
+	lib/SeqFilter.pm -> ../bin/SeqFilter
+
+	Getopt:Long
+		vars to hash
+		names == module methods names
+
+	methods return 
+		objects, stringify is used for bin output.
+
+	multi-in
+		STDIN
+		FILE 
+		FILE FILE ... using white space separation (Bash var expansion)
+	
+	multi-out
+		STDOUT
+		FILE
+		FILE FILE ... sprintf-style pattern for multi out (multi-in)
+			%{I}, %{O}, %{C}
+			s/{I}/1\s/;
+			s/{O}/2\s/;
+			s/{C}/3\d/;
+			
+	logging
+		Log::Log4perl
+			
+SeqFilter
+	Bio::Perl
+	check_format
+	peek
+	order aware filter parameter
+		filter in flexible hash-subref chain
+		
+SeqChunker
+	Perl-API
+	random seed
+	
+SeqStore
+	Bio::Perl

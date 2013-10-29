@@ -1,0 +1,150 @@
+#!/usr/bin/perl
+use warnings 'qw';
+use strict;
+
+# logger before package
+use Log::Log4perl qw(:easy :no_extra_logdie_message);
+Log::Log4perl->init(\<<'CFG');
+		log4perl.logger.main				= DEBUG, Screen
+		log4perl.appender.Screen			= Log::Log4perl::Appender::Screen
+		log4perl.appender.Screen.stderr		= 0
+		log4perl.appender.Screen.layout		= PatternLayout
+		log4perl.appender.Screen.layout.ConversionPattern = [%d{MM-dd HH:mm:ss}] [%C] %m%n
+	
+CFG
+my $L = Log::Log4perl::get_logger();
+
+
+
+
+##------------------------------------------------------------------------##
+package SeqStore;
+
+# use
+use Carp;
+use Getopt::Long;
+use Pod::Usage;
+use Pod::Find qw(pod_where);
+
+use Data::Dumper;
+
+use Bio::DB::Fasta;
+use Bio::SeqIO;
+
+use Cwd;
+
+our $VERSION = '0.01';
+
+# globals
+my $cmd; # global var for current cmd
+
+# keys are used in both modes to determine valid 
+# commands
+# values are only relevant for GetOpt parsing in
+# exec mode
+my $cmd_opt = {            
+	init => [qw(glob|g=s)],     
+	fetch => [qw(a=s)],    
+};                         
+
+# run _Main if modulino is used as executable
+__PACKAGE__->_Main(@ARGV) unless caller;
+
+
+##------------------------------------------------------------------------##
+
+
+sub init{
+	my $class = shift;
+	$L->info("Initializing");
+	
+	# args
+	my $path = shift;
+	$L->logdie("Store file or location required") unless $path;	
+	
+	# opt
+	my %opt = (
+		glob => undef,
+		@_
+	);
+	
+
+	$L->info("Indexing data");
+	my $db = Bio::DB::Fasta->new(
+		$path, '-glob' => $opt{'glob'} || (),
+	);
+
+	$L->info("Indexed ". scalar $db->ids . " FASTA sequences");
+	return (); # void
+}
+
+sub fetch{
+	my $class = shift @_;
+	$L->info("Fetching");
+
+	# arg
+	my $path = shift @_;
+	$L->logdie("Store file or location required") unless $path;	
+
+	# opts
+	my %opt = (
+		@_
+	);
+	
+	my $db = Bio::DB::Fasta->new($path);
+	
+	if($cmd){ # exec mode
+		# print stringified fasta versions
+		while(<STDIN>){
+			chomp();
+			printf ">%s\n%s\n", $db->header($_), $db->seq($_);
+		}
+		
+	}else{
+		$L->logdie("not implemented");
+	}
+	
+	
+	
+}
+
+
+##------------------------------------------------------------------------##
+# modulino as executable stuff
+
+sub _Main{
+	my $class = shift;
+	
+	# get and check command
+	$class->_cmd();
+	
+	# get and check options/parameter
+	my %opt;
+	GetOptions(\%opt, $class->_cmd_opt) or exit(255);
+	
+	$class->$cmd(@ARGV, %opt);
+	
+}
+
+
+sub _cmd{
+	my $proto = shift;
+	$cmd = shift @ARGV;
+	pod2usage("Command required") unless $cmd;
+	pod2usage("Unknown command") unless grep{$_ eq $cmd}keys %{$cmd_opt};
+}
+
+sub _cmd_opt{
+	#my $proto = shift;
+	return @{$cmd_opt->{$cmd}};
+}
+
+
+1;
+
+
+
+
+
+
+
