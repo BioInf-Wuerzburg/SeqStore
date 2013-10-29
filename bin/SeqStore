@@ -88,6 +88,7 @@ sub fetch{
 
 	# opts
 	my %opt = (
+		ids => [],
 		@_
 	);
 	
@@ -101,11 +102,12 @@ sub fetch{
 		}
 		
 	}else{
-		$L->logdie("not implemented");
+		my @re;
+		foreach my $id (@{$opt{ids}}){
+			push @re, $db->get_Seq_by_id($id);
+		}
+		return @re;
 	}
-	
-	
-	
 }
 
 
@@ -122,7 +124,7 @@ sub _Main{
 	my %opt;
 	GetOptions(\%opt, $class->_cmd_opt) or exit(255);
 	
-	$class->$cmd(@ARGV, %opt);
+	return $class->$cmd(@ARGV, %opt);
 	
 }
 
