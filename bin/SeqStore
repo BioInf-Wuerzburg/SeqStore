@@ -7,14 +7,33 @@ use Log::Log4perl qw(:easy :no_extra_logdie_message);
 Log::Log4perl->init(\<<'CFG');
 		log4perl.logger.main				= DEBUG, Screen
 		log4perl.appender.Screen			= Log::Log4perl::Appender::Screen
-		log4perl.appender.Screen.stderr		= 0
+		log4perl.appender.Screen.stderr		= 1
 		log4perl.appender.Screen.layout		= PatternLayout
 		log4perl.appender.Screen.layout.ConversionPattern = [%d{MM-dd HH:mm:ss}] [%C] %m%n
 	
 CFG
 my $L = Log::Log4perl::get_logger();
 
+=head1 Changelog
 
+=cut
+
+=head2 0.02
+
+=over
+
+=item [Feature] Tests
+
+=item [Feature] SeqStore uses Fasta::Seq instead of Bio::Seq stuff. 
+C<get_seq()> returns single Fasta::Seq objects from store.
+
+=item [Feature] Accessors etc.
+
+=item [Refacture] SeqStore uses instances. C<init()> is replaced by C<new()>. 
+
+=back
+
+=cut
 
 
 ##------------------------------------------------------------------------##
@@ -29,11 +48,13 @@ use Pod::Find qw(pod_where);
 use Data::Dumper;
 
 use Bio::DB::Fasta;
-use Bio::SeqIO;
+
+use Fasta::Parser;
+use Fasta::Seq;
 
 use Cwd;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 # globals
 my $cmd; # global var for current cmd
@@ -43,7 +64,7 @@ my $cmd; # global var for current cmd
 # values are only relevant for GetOpt parsing in
 # exec mode
 my $cmd_opt = {            
-	init => [qw(glob|g=s)],     
+	new => [qw(glob|g=s path|p=s)],     
 	fetch => [qw(a=s)],    
 };                         
 
@@ -54,60 +75,115 @@ __PACKAGE__->_Main(@ARGV) unless caller;
 ##------------------------------------------------------------------------##
 
 
-sub init{
-	my $class = shift;
+sub new{
+	my $proto = shift;
+	my $self;
+	my $class;
+	
+	# object method -> clone + overwrite
+	if($class = ref $proto){ 
+		return bless ({%$proto, @_}, $class);
+	}else{
+		$class = $proto;
+	}
+
 	$L->info("Initializing");
 	
-	# args
-	my $path = shift;
-	$L->logdie("Store file or location required") unless $path;	
-	
 	# opt
-	my %opt = (
+	my $self = {
+		db => undef,
 		glob => undef,
+		ids_fh => undef,
+		out_fh => undef,
+		reindex => 0,
+		@_%2 ? (path => shift) : (),
 		@_
-	);
+	};
 	
+	bless $self, $class;
+	
+	# args
+	$L->logdie("Store file or location required") unless $self->path;	
 
-	$L->info("Indexing data");
-	my $db = Bio::DB::Fasta->new(
-		$path, '-glob' => $opt{'glob'} || (),
-	);
+	if(-d $self->path && -e 'directory.index' or -e $self->path.".fa"){
+		if($self->reindex){
+			$L->info("Reindexing data");
+			$self->db(
+				Bio::DB::Fasta->new(
+				$self->path, 
+				$self->glob ? ('-glob' => $self->glob) : (),
+				'-reindex' => 1,
+			));
+		}else{
+			$L->info("Loading index");
+			$self->db(
+				Bio::DB::Fasta->new(
+				$self->path, 
+			));
+		}
+	}else{
+		$L->info("Indexing data");
+			$self->db(
+				Bio::DB::Fasta->new(
+				$self->path, 
+				$self->glob ? ('-glob' => $self->glob) : (),
+			));
+	}
 
-	$L->info("Indexed ". scalar $db->ids . " FASTA sequences");
-	return (); # void
+	$L->info("Indexed ". scalar $self->db->ids . " FASTA sequences");
+	return $self; # void
 }
 
 sub fetch{
-	my $class = shift @_;
+	my $proto = shift;
+	my $self;
+	my $class;
+	
+	# class method in modulino mode
+	if($class = ref $proto){ 
+		$self = {%$proto, @_};
+		bless $self, $class;
+	}else{
+		$class = $proto;
+		$self = $class->new(
+			ids_fh => \*STDIN,
+			out_fh => \*STDOUT,
+			@_%2 ? (path => shift) : (),
+			@_
+		);
+	}
+	
 	$L->info("Fetching");
 
-	# arg
-	my $path = shift @_;
-	$L->logdie("Store file or location required") unless $path;	
-
-	# opts
-	my %opt = (
-		ids => [],
-		@_
-	);
-	
-	my $db = Bio::DB::Fasta->new($path);
-	
-	if($cmd){ # exec mode
+	my @re;
+	my $ifh = $self->ids_fh;
+	my $ofh = $self->out_fh;
+	if($ifh && $ofh){ # exec mode
 		# print stringified fasta versions
-		while(<STDIN>){
+		while(<$ifh>){
 			chomp();
-			printf ">%s\n%s\n", $db->header($_), $db->seq($_);
+			my $seq = $self->get_seq($_);
+			print $ofh "$seq" if $seq;
 		}
-		
+	}elsif($ifh){
+		my $ifh = $self->ids_fh;
+		while(<$ifh>){
+			chomp();
+			my $seq = $self->get_seq($_);
+			push @re, $seq if $seq;	
+		}
+	}elsif($ofh){
+		foreach (@{$self->ids}){
+			my $seq = $self->get_seq($_);
+			print $ofh "$seq" if $seq;			
+		}
 	}else{
-		my @re;
-		foreach my $id (@{$opt{ids}}){
-			push @re, $db->get_Seq_by_id($id);
+		foreach (@{$self->ids}){
+			my $seq = $self->get_seq($_);
+			push @re, $seq if $seq;
 		}
-		return @re;
 	}
+	return @re;
 }
 
 
@@ -139,6 +215,83 @@ sub _cmd{
 sub _cmd_opt{
 	#my $proto = shift;
 	return @{$cmd_opt->{$cmd}};
+}
+
+
+##------------------------------------------------------------------------##
+# Accessors
+
+sub path{
+	my ($self, $path) = @_;
+	if(defined $path){
+		$self->{path} = $path;
+	}
+	return $self->{path};
+}
+
+sub glob{
+	my ($self, $glob) = @_;
+	if(defined $glob){
+		$self->{glob} = $glob;
+	}
+	return $self->{glob};
+}
+
+sub db{
+	my ($self, $db) = @_;
+	if(defined $db){
+		$self->{db} = $db;
+	}
+	return $self->{db};
+}
+
+sub out_fh{
+	my ($self, $out_fh) = @_;
+	if(defined $out_fh){
+		$self->{out_fh} = $out_fh;
+	}
+	return $self->{out_fh};
+}
+
+sub ids_fh{
+	my ($self, $ids_fh) = @_;
+	if(defined $ids_fh){
+		$self->{ids_fh} = $ids_fh;
+	}
+	return $self->{ids_fh};
+}
+
+sub ids{
+	my ($self, $ids) = @_;
+	if(defined $ids){
+		$self->{ids} = $ids;
+	}
+	return $self->{ids};
+}
+
+sub reindex{
+	my ($self, $reindex) = @_;
+	if(defined $reindex){
+		$self->{reindex} = $reindex;
+	}
+	return $self->{reindex};
+}
+
+##------------------------------------------------------------------------##
+# Methods
+
+sub get_seq{
+	my $self = shift;
+	my ($h, $s) = ($self->db->header($_), $self->db->seq($_));
+	unless($h){
+		$L->warn("ID not in store: $_");
+		return;
+	}
+	
+	return Fasta::Seq->new(
+		seq_head => $h, 
+		seq => $s
+	);
 }
 
 
