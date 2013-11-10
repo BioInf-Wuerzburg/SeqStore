@@ -1,18 +1,35 @@
 #!/usr/bin/perl
-use warnings 'qw';
+package SeqStore;
+
+use warnings;
+no warnings 'qw';
 use strict;
 
-# logger before package
+use Carp;
 use Log::Log4perl qw(:easy :no_extra_logdie_message);
 Log::Log4perl->init(\<<'CFG');
-		log4perl.logger.main				= DEBUG, Screen
+		log4perl.logger.SeqStore			= DEBUG, Screen
 		log4perl.appender.Screen			= Log::Log4perl::Appender::Screen
 		log4perl.appender.Screen.stderr		= 1
 		log4perl.appender.Screen.layout		= PatternLayout
 		log4perl.appender.Screen.layout.ConversionPattern = [%d{MM-dd HH:mm:ss}] [%C] %m%n
-	
 CFG
+
 my $L = Log::Log4perl::get_logger();
+
+use Getopt::Long;
+use Pod::Usage;
+use Data::Dumper;
+
+use Cwd;
+
+use Bio::DB::Fasta;
+use Fasta::Parser;
+use Fasta::Seq;
+
+
+our $VERSION = '0.02';
+
 
 =head1 Changelog
 
@@ -21,6 +38,8 @@ my $L = Log::Log4perl::get_logger();
 =head2 0.02
 
 =over
+
+=item [BugFix] C<get_seq()> handles provided id correctly.
 
 =item [Feature] Tests
 
@@ -37,24 +56,7 @@ C<get_seq()> returns single Fasta::Seq objects from store.
 
 
 ##------------------------------------------------------------------------##
-package SeqStore;
 
-# use
-use Carp;
-use Getopt::Long;
-use Pod::Usage;
-use Pod::Find qw(pod_where);
-
-use Data::Dumper;
-
-use Bio::DB::Fasta;
-
-use Fasta::Parser;
-use Fasta::Seq;
-
-use Cwd;
-
-our $VERSION = '0.02';
 
 # globals
 my $cmd; # global var for current cmd
@@ -90,7 +92,7 @@ sub new{
 	$L->info("Initializing");
 	
 	# opt
-	my $self = {
+	$self = {
 		db => undef,
 		glob => undef,
 		ids_fh => undef,
@@ -105,7 +107,7 @@ sub new{
 	# args
 	$L->logdie("Store file or location required") unless $self->path;	
 
-	if(-d $self->path && -e 'directory.index' or -e $self->path.".fa"){
+	if(-d $self->path && -e 'directory.index' or -e $self->path.".index"){
 		if($self->reindex){
 			$L->info("Reindexing data");
 			$self->db(
@@ -281,10 +283,10 @@ sub reindex{
 # Methods
 
 sub get_seq{
-	my $self = shift;
-	my ($h, $s) = ($self->db->header($_), $self->db->seq($_));
+	my ($self, $id) = @_;
+	my ($h, $s) = ($self->db->header($id), $self->db->seq($id));
 	unless($h){
-		$L->warn("ID not in store: $_");
+		$L->warn("ID not in store: $id");
 		return;
 	}
 	
