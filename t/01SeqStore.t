@@ -10,6 +10,14 @@ use FindBin qw($RealBin);
 use lib "$RealBin/../lib/";
 
 use Carp;
+use Log::Log4perl qw(:easy :levels);
+Log::Log4perl->init(\q(
+	log4perl.rootLogger					= DEBUG, Screen
+	log4perl.appender.Screen			= Log::Log4perl::Appender::Screen
+	log4perl.appender.Screen.stderr		= 1
+	log4perl.appender.Screen.layout		= PatternLayout
+	log4perl.appender.Screen.layout.ConversionPattern = [%d{MM-dd HH:mm:ss}] [%C] %m%n
+));
 
 #--------------------------------------------------------------------------#
 =head2 load module
@@ -77,7 +85,7 @@ subtest '$o->fetch' => sub{
 	is("$seqs[1]", $Fa[3], '$o->'."fetch another seq");
 	
 	open(IDS, $Ids_file) or carp $!;
-	@seqs = $self->fetch(ids_fh => \*IDS, [@{$Dmp{ids}}[4,3]]);
+	@seqs = $self->fetch(ids_fh => \*IDS, ids => [@{$Dmp{ids}}[4,3]]);
 	is("$seqs[0]", $Fa[0], '$o->'."fetch ids from file");
 	close IDS;
 	

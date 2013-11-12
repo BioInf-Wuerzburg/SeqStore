@@ -7,15 +7,6 @@ use strict;
 
 use Carp;
 use Log::Log4perl qw(:easy :no_extra_logdie_message);
-Log::Log4perl->init(\<<'CFG');
-		log4perl.logger.SeqStore			= DEBUG, Screen
-		log4perl.appender.Screen			= Log::Log4perl::Appender::Screen
-		log4perl.appender.Screen.stderr		= 1
-		log4perl.appender.Screen.layout		= PatternLayout
-		log4perl.appender.Screen.layout.ConversionPattern = [%d{MM-dd HH:mm:ss}] [%C] %m%n
-CFG
-
-my $L = Log::Log4perl::get_logger();
 
 use Getopt::Long;
 use Pod::Usage;
@@ -57,6 +48,7 @@ C<get_seq()> returns single Fasta::Seq objects from store.
 
 ##------------------------------------------------------------------------##
 
+my $L = Log::Log4perl::get_logger();
 
 # globals
 my $cmd; # global var for current cmd
@@ -194,6 +186,16 @@ sub fetch{
 
 sub _Main{
 	my $class = shift;
+	
+	# init a root logger in exec mode
+	Log::Log4perl->init(\q(
+		log4perl.rootLogger					= DEBUG, Screen
+		log4perl.appender.Screen			= Log::Log4perl::Appender::Screen
+		log4perl.appender.Screen.stderr		= 1
+		log4perl.appender.Screen.layout		= PatternLayout
+		log4perl.appender.Screen.layout.ConversionPattern = [%d{MM-dd HH:mm:ss}] [%C] %m%n
+	));
+	
 	
 	# get and check command
 	$class->_cmd();
