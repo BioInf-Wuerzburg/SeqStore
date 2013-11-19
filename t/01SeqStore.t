@@ -88,8 +88,16 @@ subtest '$o->fetch' => sub{
 	@seqs = $self->fetch(ids_fh => \*IDS, ids => [@{$Dmp{ids}}[4,3]]);
 	is("$seqs[0]", $Fa[0], '$o->'."fetch ids from file");
 	close IDS;
+
+	$self->converter(sub{
+		$_[0]->id("Hi_there");
+	});
+	my @converted_seqs = $self->fetch(ids => [@{$Dmp{ids}}[4,3]]);
+	is("$converted_seqs[0]", $Fa[5], '$o->'."fetch seq with converter");
+	
 	
 };
+
 
 done_testing();	
 __END__

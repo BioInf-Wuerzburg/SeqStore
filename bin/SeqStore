@@ -30,6 +30,9 @@ our $VERSION = '0.02';
 
 =over
 
+=item [Feature] C<convert_seq()> takes a code ref to convert retrieved 
+ sequence prior to returning them.
+
 =item [BugFix] C<get_seq()> handles provided id correctly.
 
 =item [Feature] Tests
@@ -59,7 +62,7 @@ my $cmd; # global var for current cmd
 # exec mode
 my $cmd_opt = {            
 	new => [qw(glob|g=s path|p=s)],     
-	fetch => [qw(a=s)],    
+	fetch => [qw(a=s converter=s)],    
 };                         
 
 # run _Main if modulino is used as executable
@@ -142,6 +145,7 @@ sub fetch{
 		$self = $class->new(
 			ids_fh => \*STDIN,
 			out_fh => \*STDOUT,
+			converter => undef,
 			@_%2 ? (path => shift) : (),
 			@_
 		);
@@ -221,6 +225,34 @@ sub _cmd_opt{
 	return @{$cmd_opt->{$cmd}};
 }
 
+##------------------------------------------------------------------------##
+# Methods
+
+sub get_seq{
+	my ($self, $id) = @_;
+	my ($h, $s) = ($self->db->header($id), $self->db->seq($id));
+	unless($h){
+		$L->warn("ID not in store: $id");
+		return;
+	}
+	
+	my $fa = Fasta::Seq->new(
+		seq_head => $h, 
+		seq => $s
+	);
+	
+	if($self->converter){
+		$self->convert_seq($fa);
+	}
+	
+	return $fa;
+}
+
+sub convert_seq{
+	my ($self, $fa) = @_;
+	$self->{converter}($fa);
+	return $fa;
+}
 
 ##------------------------------------------------------------------------##
 # Accessors
@@ -281,21 +313,17 @@ sub reindex{
 	return $self->{reindex};
 }
 
-##------------------------------------------------------------------------##
-# Methods
 
-sub get_seq{
-	my ($self, $id) = @_;
-	my ($h, $s) = ($self->db->header($id), $self->db->seq($id));
-	unless($h){
-		$L->warn("ID not in store: $id");
-		return;
-	}
-	
-	return Fasta::Seq->new(
-		seq_head => $h, 
-		seq => $s
-	);
+=head2 converter
+
+Get/Set the converter.
+
+=cut
+
+sub converter{
+	my ($self, $converter, $force) = @_;
+	$self->{converter} = $converter if (defined $converter or $force);
+	return $self->{converter};
 }
 
 
