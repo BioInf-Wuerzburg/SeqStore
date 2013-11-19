@@ -33,6 +33,9 @@ our $VERSION = '0.02';
 =item [Feature] C<converter()> takes a code ref, which is applied retrieved 
  sequences prior to returning.
 
+=item [Feature] C<$SeqStore::Warn_nonexising_id> with default 1. Disable
+warnings for nonexisting ids.
+
 =item [BugFix] C<get_seq()> handles provided id correctly.
 
 =item [Feature] Tests
@@ -64,6 +67,10 @@ my $cmd_opt = {
 	new => [qw(glob|g=s path|p=s)],     
 	fetch => [qw(a=s converter=s)],    
 };                         
+
+
+our $Warn_nonexisting_id = 1;
+
 
 # run _Main if modulino is used as executable
 __PACKAGE__->_Main(@ARGV) unless caller;
@@ -232,7 +239,7 @@ sub get_seq{
 	my ($self, $id) = @_;
 	my ($h, $s) = ($self->db->header($id), $self->db->seq($id));
 	unless($h){
-		$L->warn("ID not in store: $id");
+		$L->warn("ID not in store: $id") if $Warn_nonexisting_id;
 		return;
 	}
 	
@@ -311,19 +318,6 @@ sub reindex{
 		$self->{reindex} = $reindex;
 	}
 	return $self->{reindex};
-}
-
-
-=head2 converter
-
-Get/Set the converter.
-
-=cut
-
-sub converter{
-	my ($self, $converter, $force) = @_;
-	$self->{converter} = $converter if (defined $converter or $force);
-	return $self->{converter};
 }
 
 
