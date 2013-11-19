@@ -320,6 +320,18 @@ sub reindex{
 	return $self->{reindex};
 }
 
+=head2 converter
+
+Get/Set the converter.
+
+=cut
+
+sub converter{
+	my ($self, $converter, $force) = @_;
+	$self->{converter} = $converter if (defined $converter or $force);
+	return $self->{converter};
+}
+
 
 1;
 
