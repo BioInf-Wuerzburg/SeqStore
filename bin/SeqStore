@@ -30,8 +30,8 @@ our $VERSION = '0.02';
 
 =over
 
-=item [Feature] C<convert_seq()> takes a code ref to convert retrieved 
- sequence prior to returning them.
+=item [Feature] C<converter()> takes a code ref, which is applied retrieved 
+ sequences prior to returning.
 
 =item [BugFix] C<get_seq()> handles provided id correctly.
 
