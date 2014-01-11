@@ -30,6 +30,9 @@ our $VERSION = '0.02';
 
 =over
 
+=item [Feature] C<get_seq> takes additional arguments FROM and TO to extract
+ subseqs.
+
 =item [Feature] C<converter()> takes a code ref, which is applied retrieved 
  sequences prior to returning.
 
@@ -236,8 +239,9 @@ sub _cmd_opt{
 # Methods
 
 sub get_seq{
-	my ($self, $id) = @_;
-	my ($h, $s) = ($self->db->header($id), $self->db->seq($id));
+	my $self = shift;
+	my ($id) = @_;
+	my ($h, $s) = ($self->db->header($id), $self->db->seq(@_));
 	unless($h){
 		$L->warn("ID not in store: $id") if $Warn_nonexisting_id;
 		return;
