@@ -80,20 +80,35 @@ subtest "Accessors" => sub{
 subtest '$o->fetch' => sub{
 	can_ok($self, "fetch");
 	
+	# fetch from array
 	my @seqs = $self->fetch(ids => [@{$Dmp{ids}}[4,3]]);
 	is("$seqs[0]", $Fa[4], '$o->'."fetch seq");
 	is("$seqs[1]", $Fa[3], '$o->'."fetch another seq");
 	
+	# fetch from handle
 	open(IDS, $Ids_file) or carp $!;
-	@seqs = $self->fetch(ids_fh => \*IDS, ids => [@{$Dmp{ids}}[4,3]]);
+	@seqs = $self->fetch(ids_fh => \*IDS);
 	is("$seqs[0]", $Fa[0], '$o->'."fetch ids from file");
 	close IDS;
 
+	# fetch FROM,TO array
+	my $id = ${$Dmp{ids}}[0];
+	my ($seq) = $self->fetch(ids => [[$id, 5,10]]);
+	is($seq->seq, Fasta::Seq->new($Fa[0])->substr_seq(4,6)->seq, '$o->'."fetch seq ID,FROM,TO");
+	
+	# fetch FROM,TO handle
+	open(ID, '<', \($id." 5 10")) or carp $!;
+	($seq) = $self->fetch(ids_fh => \*ID);
+	is($seq->seq, Fasta::Seq->new($Fa[0])->substr_seq(4,6)->seq, '$o->'."fetch seq ID FROM TO file");
+	close ID;
+
+	# fetch with converter
 	$self->converter(sub{
 		$_[0]->id("Hi_there");
 	});
 	my @converted_seqs = $self->fetch(ids => [@{$Dmp{ids}}[4,3]]);
 	is("$converted_seqs[0]", $Fa[5], '$o->'."fetch seq with converter");
+	
 	
 	
 };

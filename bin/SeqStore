@@ -170,24 +170,24 @@ sub fetch{
 		# print stringified fasta versions
 		while(<$ifh>){
 			chomp();
-			my $seq = $self->get_seq($_);
+			my $seq = $self->get_seq(split(/\s/, $_));
 			print $ofh "$seq" if $seq;
 		}
 	}elsif($ifh){
 		my $ifh = $self->ids_fh;
 		while(<$ifh>){
 			chomp();
-			my $seq = $self->get_seq($_);
+			my $seq = $self->get_seq(split(/\s/, $_));
 			push @re, $seq if $seq;	
 		}
 	}elsif($ofh){
 		foreach (@{$self->ids}){
-			my $seq = $self->get_seq($_);
+			my $seq = $self->get_seq(split(/\s/, $_));
 			print $ofh "$seq" if $seq;			
 		}
 	}else{
 		foreach (@{$self->ids}){
-			my $seq = $self->get_seq($_);
+			my $seq = $self->get_seq(ref $_ ? @$_ : $_);
 			push @re, $seq if $seq;
 		}
 	}
