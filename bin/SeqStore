@@ -21,6 +21,15 @@ use Fasta::Seq;
 
 our $VERSION = '0.02';
 
+=head1 NAME
+
+SeqStore
+
+=head1 DESCRIPTION
+
+FASTA sequence store for fast and random access by ids.
+
+=cut
 
 =head1 Changelog
 
@@ -54,21 +63,57 @@ C<get_seq()> returns single Fasta::Seq objects from store.
 
 =cut
 
+=head1 SYNOPSIS
+
+=cut
+
+=head2 help
+
+  SeqStore <cmd> --help
+
+=head2 new
+
+  SeqStore new <FILE.fa>          # index file
+  SeqStore new <DIR/with/FASTAS>  # index directory
+
+=cut
+
+=head2 fetch
+
+  cat IDS | SeqStore fetch <FILE.fa/DIR>
+
+=cut
+
+=head1 OPTIONS
+
+=cut
+
+=head2 new
+
+=cut
+
+=head2 fetch
+
+=cut
+
+=head1 CODE
+
+=cut
 
 ##------------------------------------------------------------------------##
 
 my $L = Log::Log4perl::get_logger();
 
 # globals
-my $cmd; # global var for current cmd
+my $CMD; # global var for current cmd
 
 # keys are used in both modes to determine valid 
 # commands
 # values are only relevant for GetOpt parsing in
 # exec mode
-my $cmd_opt = {            
-	new => [qw(glob|g=s path|p=s)],     
-	fetch => [qw(a=s converter=s)],    
+my $CMD_opt = {            
+	new => [qw(help! glob|g=s path|p=s)],     
+	fetch => [qw(help! a=s converter=s)],    
 };                         
 
 
@@ -215,28 +260,42 @@ sub _Main{
 	$class->_cmd();
 	
 	# get and check options/parameter
-	my %opt;
+	my %opt = (
+		help => \&_help,
+		
+	);
 	GetOptions(\%opt, $class->_cmd_opt) or exit(255);
 	
-	return $class->$cmd(@ARGV, %opt);
+	return $class->$CMD(@ARGV, %opt);
 	
 }
 
 
 sub _cmd{
 	my $proto = shift;
-	$cmd = shift @ARGV;
-	pod2usage("Command required") unless $cmd;
-	pod2usage("Unknown command") unless grep{$_ eq $cmd}keys %{$cmd_opt};
+	$CMD = shift @ARGV;
+	pod2usage("Command required") unless $CMD;
+	pod2usage() if $CMD =~ /^-+h/;
+	pod2usage("Unknown command") unless grep{$_ eq $CMD}keys %{$CMD_opt};
 }
 
 sub _cmd_opt{
 	#my $proto = shift;
-	return @{$cmd_opt->{$cmd}};
+	return @{$CMD_opt->{$CMD}};
+}
+
+sub _help{
+	my ($h, $k, $v) = @_;
+	pod2usage({
+		-verbose => 99,
+		-sections => ["SYNOPSIS/$CMD","OPTIONS/$CMD"]
+	});
+	
 }
 
 ##------------------------------------------------------------------------##
 # Methods
+
 
 sub get_seq{
 	my $self = shift;
