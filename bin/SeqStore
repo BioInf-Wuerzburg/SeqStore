@@ -94,6 +94,13 @@ C<get_seq()> returns single Fasta::Seq objects from store.
 
 =head2 fetch
 
+Fetch sequence by ID from SeqStore. Reads STDIN, one ID per line. Takes 
+ optional 1-based FROM TO coordinates, whitespace separated, to extract 
+ subsequence. Sample ID file:
+
+  id1 1 100
+  id2 5 233
+
 =cut
 
 =head1 CODE
