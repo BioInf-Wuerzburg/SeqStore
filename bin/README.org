@@ -1,0 +1,13 @@
+** Usage
+#+BEGIN_SRC sh
+    # help:
+    SeqStore <cmd> --help
+
+    # new:
+    SeqStore new <FILE.fa>          # index file
+    SeqStore new <DIR/with/FASTAS>  # index directory
+
+    # fetch:
+    cat IDS | SeqStore fetch <FILE.fa/DIR>
+#+END_SRC
+
